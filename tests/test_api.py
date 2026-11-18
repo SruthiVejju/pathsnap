@@ -68,3 +68,27 @@ def test_trained_pipeline_loads_tuned_hmm_params(tmp_path):
     (tmp_path / "hmm_config.json").write_text(json.dumps({"params": {"hop_penalty": 0.5, "max_hops": 9}}))
     p = TrainedPipeline(tmp_path / "m.joblib", tmp_path / "c.json").params
     assert p.hop_penalty == 0.5 and p.max_hops == 9
+
+
+def test_metrics_keys_and_ranges():
+    tid = client.get("/trips").json()["trips"][0]
+    m = client.post(f"/predict/{tid}").json()["metrics"]
+    for k in ["pointwise_accuracy", "route_continuity", "route_f1", "route_precision", "route_recall",
+              "pointwise_accuracy_classifier_only", "route_f1_classifier_only"]:
+        assert 0.0 <= m[k] <= 1.0, k
+    # F1 is the harmonic mean of precision and recall
+    p, r = m["route_precision"], m["route_recall"]
+    assert abs(m["route_f1"] - (2 * p * r / (p + r) if p + r else 0.0)) < 1e-9
+    assert all(isinstance(v, float) for v in m.values())                # numbers only, never labels
+
+
+def test_several_eval_folders_are_listed_together(tmp_path, monkeypatch):
+    import api.main as main
+    empty = tmp_path / "other_partition"
+    empty.mkdir()
+    monkeypatch.setattr(main, "EVAL_DIRS", [empty, main.EVAL_DIR])
+    body = client.get("/trips").json()
+    assert len(body["trips"]) == 10 and body["groups"]["other_partition"] == []
+    assert len(body["groups"][main.EVAL_DIR.name]) == 10
+    assert client.post(f"/predict/{body['trips'][0]}").status_code == 200   # found in the second folder
+    assert client.post("/predict/nope").status_code == 404
