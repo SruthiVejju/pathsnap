@@ -102,6 +102,8 @@ against reference routes that stay **server-side**. The UI (Laptop 2) only sends
 Each trip is a folder `<trip_id>/` containing `<trip_id>.track`, `.nodes`, `.arcs` and `.route`.
 ```bash
 export PATHSNAP_EVAL_DIR="/path/to/folder/with/trip/subfolders"
+# several folders at once (':' on macOS/Linux, ';' on Windows), e.g. development + evaluator trips:
+export PATHSNAP_EVAL_DIR="/path/to/student_test:/path/to/evaluator_test"
 ```
 If unset, it defaults to `<PATHSNAP_DATA>/student_test` (development data).
 The `.route` file is read only after prediction, to compute metrics; it is never given to the pipeline.
@@ -134,8 +136,9 @@ curl -X POST http://<laptop-1-ip>:8000/predict/<a trip id>
 | GET | `/trips` | list of available trip IDs |
 | POST | `/predict/{trip_id}` (also `/predict` with `{"trip_id": "..."}`) | `raw_gps`, `predicted_route` (both `[lat, lon]`), `summary`, `metrics`, `latency_ms`. The reference route is never returned. |
 
-Metrics include route continuity (HMM vs classifier-only), the share of predicted arcs on the
-reference route, and reference coverage. Interactive docs are at `http://<laptop-1-ip>:8000/docs`.
+Metrics (numbers only) include `pointwise_accuracy`, `route_continuity`, `route_f1` (with precision and recall),
+each also for the classifier-only baseline, plus the older `pred_arcs_on_reference` / `reference_coverage`.
+Definitions are in `docs/ui-api-contract.md`. `GET /trips` returns `trips` and a `groups` map by source folder. Interactive docs are at `http://<laptop-1-ip>:8000/docs`.
 
 ### Logs (show these to the evaluator)
 Every request is logged to the terminal and to `logs/api.log`, for example:

@@ -1,7 +1,9 @@
 """PathSnap FastAPI backend (runs on Laptop 1).
 
 Run:  uvicorn api.main:app --host 0.0.0.0 --port 8000
-Env:  PATHSNAP_EVAL_DIR  folder containing one sub-folder per trip (.track/.nodes/.arcs/.route)
+Env:  PATHSNAP_EVAL_DIR  folder containing one sub-folder per trip (.track/.nodes/.arcs/.route).
+                         Several folders may be given, separated by the OS path separator (':' on macOS/Linux,
+                         ';' on Windows); their trips are listed together.
 
 Ground truth (.route) is read ONLY here, after the prediction is made, to compute metrics.
 It is never given to the pipeline.
@@ -19,7 +21,7 @@ from pydantic import BaseModel
 
 from pathsnap.config import ROOT, data_root
 from pathsnap.hmm.graph import RoadGraph
-from pathsnap.hmm.metrics import route_continuity
+from pathsnap.hmm.metrics import pointwise_accuracy_all, route_continuity, route_prf
 from pathsnap.pipeline import PlaceholderPipeline, Pipeline, TrainedPipeline
 
 # ---- logging: console + file (evaluators must be shown the API logs) ----
@@ -32,7 +34,9 @@ if not log.handlers:   # explicit handlers: basicConfig is a no-op if another li
         _h.setFormatter(_fmt)
         log.addHandler(_h)
 
-EVAL_DIR = Path(os.environ.get("PATHSNAP_EVAL_DIR", data_root() / "student_test"))
+_raw_dirs = os.environ.get("PATHSNAP_EVAL_DIR")
+EVAL_DIRS = [Path(p) for p in _raw_dirs.split(os.pathsep) if p.strip()] if _raw_dirs else [data_root() / "student_test"]
+EVAL_DIR = EVAL_DIRS[0]            # first folder (kept for backwards compatibility)
 
 
 def _load_pipeline() -> Pipeline:
@@ -68,10 +72,12 @@ class PredictRequest(BaseModel):
 
 
 def _trip_dir(trip_id: str) -> Path:
-    d = EVAL_DIR / trip_id
-    if not trip_id.isalnum() or not d.is_dir():      # also blocks path traversal
-        raise HTTPException(404, f"unknown trip_id {trip_id!r}")
-    return d
+    if trip_id.isalnum():                            # also blocks path traversal
+        for base in EVAL_DIRS:
+            d = base / trip_id
+            if d.is_dir():
+                return d
+    raise HTTPException(404, f"unknown trip_id {trip_id!r}")
 
 
 def _polyline(nodes: np.ndarray, arcs: np.ndarray, arc_ids) -> list[list[float]]:
@@ -92,13 +98,19 @@ def _polyline(nodes: np.ndarray, arcs: np.ndarray, arc_ids) -> list[list[float]]
 @app.get("/health")
 def health():
     params = getattr(PIPELINE, "params", None)
-    return {"status": "ok", "eval_dir": str(EVAL_DIR), "pipeline": type(PIPELINE).__name__,
+    return {"status": "ok", "eval_dir": str(EVAL_DIR), "eval_dirs": [str(d) for d in EVAL_DIRS], "pipeline": type(PIPELINE).__name__,
             "hmm_params": asdict(params) if params is not None else None}
 
 
 @app.get("/trips")
 def trips():
-    return {"trips": sorted(p.name for p in EVAL_DIR.iterdir() if p.is_dir())}
+    """{"trips": [every trip id], "groups": {folder name: [trip ids]}}. A trip id found in several folders is listed once."""
+    groups, seen = {}, set()
+    for base in EVAL_DIRS:
+        ids = sorted(p.name for p in base.iterdir() if p.is_dir() and p.name not in seen) if base.is_dir() else []
+        seen.update(ids)
+        groups[base.name] = ids
+    return {"trips": sorted(seen), "groups": groups}
 
 
 def _run(tid: str) -> dict:
@@ -114,25 +126,33 @@ def _run(tid: str) -> dict:
     # ---- scoring against the server-side reference; only NUMBERS leave this function ----
     ref = np.loadtxt(d / f"{tid}.route", dtype=int, ndmin=1)
     g = RoadGraph(arcs)
-    ref_set = set(ref.tolist())
 
-    def on_ref(s):
-        v = [a for a in s if a >= 0]
-        return float(np.mean([a in ref_set for a in v])) if v else 0.0
-
-    def ref_cov(s):
-        return float(len(ref_set & set(s[s >= 0].tolist())) / len(ref_set))
+    # pointwise truth = monotonic alignment of the GPS points to the ordered reference route (Part A labels)
+    from pathsnap.candidates import align_labels
+    from pathsnap.data import load_trip
+    truth, _ = align_labels(load_trip(str(d), with_route=True))
+    hmm_p, hmm_r, hmm_f1 = route_prf(pred.hmm_arcs, ref)
+    clf_p, clf_r, clf_f1 = route_prf(pred.classifier_arcs, ref)
 
     metrics = {
+        # headline numbers
+        "pointwise_accuracy": pointwise_accuracy_all(pred.hmm_arcs, truth),
         "route_continuity": route_continuity(pred.hmm_arcs, g),
+        "route_f1": hmm_f1,
+        "route_precision": hmm_p,
+        "route_recall": hmm_r,
+        # classifier-only, for the comparison the brief asks for
+        "pointwise_accuracy_classifier_only": pointwise_accuracy_all(pred.classifier_arcs, truth),
         "route_continuity_classifier_only": route_continuity(pred.classifier_arcs, g),
-        "pred_arcs_on_reference": on_ref(pred.hmm_arcs),
-        "pred_arcs_on_reference_classifier_only": on_ref(pred.classifier_arcs),
-        "reference_coverage": ref_cov(pred.hmm_arcs),
+        "route_f1_classifier_only": clf_f1,
+        # kept for the existing UI/contract
+        "pred_arcs_on_reference": hmm_p,
+        "pred_arcs_on_reference_classifier_only": clf_p,
+        "reference_coverage": hmm_r,
     }
     hmm = pred.hmm_arcs.to_numpy()
-    log.info("predict trip=%s points=%d latency=%.0f ms continuity=%.3f", tid, len(track), latency_ms,
-             metrics["route_continuity"])
+    log.info("predict trip=%s points=%d latency=%.0f ms accuracy=%.3f continuity=%.3f f1=%.3f", tid, len(track),
+             latency_ms, metrics["pointwise_accuracy"], metrics["route_continuity"], metrics["route_f1"])
     # NOTE: the reference route/labels are deliberately NOT returned (they must never reach the UI).
     return {
         "trip_id": tid,
