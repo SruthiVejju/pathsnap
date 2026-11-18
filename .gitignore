@@ -208,11 +208,14 @@ cython_debug/
 # Temporary file for partial code execution
 tempCodeRunnerFile.py
 
-# Local generated datasets and plots
-results/
+# Large generated datasets (small result CSVs/plots, model artifacts and maps ARE committed)
 /data/
 *.csv.gz
-*.html
+
+# UI build output / dependencies
+node_modules/
+ui/dist/
+ui/.env
 
 # Ruff stuff:
 .ruff_cache/
