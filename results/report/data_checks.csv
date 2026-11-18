@@ -1,0 +1,3 @@
+partition,trips,gps_points,median_points_per_trip,nodes_median,arcs_median,route_arcs_median,nan_or_inf_values,nan_or_inf_nodes,nonmonotonic_timestamps,duplicate_timestamps,median_dt_s,max_dt_s,gaps_over_30s,trips_with_gap_over_30s,arcs_bad_node_ref,route_bad_arc_ref
+student_test,10,19160,1420.0,6596.5,13145.0,250.0,0,0,0,0,1.0,210.0,2,2,0,0
+train,80,208417,1529.0,9608.0,19526.5,280.0,0,0,0,0,1.0,153064.0,133,28,0,0

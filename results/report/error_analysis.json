@@ -1,0 +1,25 @@
+{
+  "partition": "training (out-of-fold)",
+  "features": 11,
+  "covered_points": 185243,
+  "errors": 8086,
+  "accuracy_pooled": 0.9563492277710899,
+  "counts": {
+    "reverse": 2286,
+    "adjacent": 3805,
+    "other": 1995
+  },
+  "shares": {
+    "reverse": 0.28271085827355924,
+    "adjacent": 0.47056641108088054,
+    "other": 0.24672273064556022
+  },
+  "predicted_arc_not_farther_than_label_arc_share": 0.8464011872372001,
+  "decoder_params": {
+    "emission_weight": 1.0,
+    "hop_penalty": 14.064436584526058,
+    "unreachable_penalty": 829.4518038591715,
+    "max_hops": 6,
+    "gap_s": 123.17939834888675
+  }
+}

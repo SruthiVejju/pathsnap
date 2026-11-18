@@ -265,3 +265,6 @@ logs/
 # The UI client lives in ui/src/lib/ (the generic Python "lib/" rule above would otherwise hide it)
 !ui/src/lib/
 /work/
+
+# large generated Folium maps for the report (regenerate with scripts/folium_prediction_map.py)
+/docs/report/maps/
