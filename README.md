@@ -93,7 +93,7 @@ uvicorn api.main:app --host 0.0.0.0 --port 8000
 ```bash
 curl http://<laptop-1-ip>:8000/health
 curl http://<laptop-1-ip>:8000/trips
-curl -X POST http://<laptop-1-ip>:8000/predict -H "Content-Type: application/json" -d '{"trip_id":"<a trip id>"}'
+curl -X POST http://<laptop-1-ip>:8000/predict/<a trip id>
 ```
 
 ### Endpoints
@@ -101,7 +101,7 @@ curl -X POST http://<laptop-1-ip>:8000/predict -H "Content-Type: application/jso
 |---|---|---|
 | GET | `/health` | status, eval directory, which pipeline is loaded |
 | GET | `/trips` | list of available trip IDs |
-| POST | `/predict` `{"trip_id": "..."}` | `gps`, `predicted_route`, `reference_route` (as `[lon, lat]` lists), `metrics`, `latency_ms` |
+| POST | `/predict/{trip_id}` (also `/predict` with `{"trip_id": "..."}`) | `raw_gps`, `predicted_route` (both `[lat, lon]`), `summary`, `metrics`, `latency_ms`. The reference route is never returned. |
 
 Metrics include route continuity (HMM vs classifier-only), the share of predicted arcs on the
 reference route, and reference coverage. Interactive docs are at `http://<laptop-1-ip>:8000/docs`.
@@ -120,9 +120,15 @@ python -m pytest tests -q
 ```
 
 ### Status
-The server currently runs a **dev-only placeholder** pipeline (`PlaceholderPipeline` in
-`src/pathsnap/pipeline.py`: nearest-arc scoring + the real HMM decoder). It must be replaced by the
-trained pipeline before the final evaluation; `/health` reports which pipeline is loaded.
+By default the server loads the **trained pipeline** (`TrainedPipeline` in `src/pathsnap/pipeline.py`):
+`build_candidates` (shared generator, never sees the route) -> trained classifier -> HMM/Viterbi.
+It reads `artifacts/candidate_model.joblib` and `artifacts/model_config.json` (override with
+`PATHSNAP_MODEL` / `PATHSNAP_MODEL_CONFIG`) and **refuses to start** if the saved feature list differs
+from `pathsnap.candidates.FEATURE_COLUMNS` (a stale model cannot silently give wrong predictions).
+`/health` reports which pipeline is loaded.
+
+`PATHSNAP_PIPELINE=placeholder` selects a dev-only stand-in (nearest-arc scoring + the real decoder);
+it is used by the unit tests and must not be used for the final evaluation.
 
 ## Team / AI disclosure
 _Fill in team members and their areas; disclose AI assistance as per event policy._

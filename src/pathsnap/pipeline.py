@@ -29,6 +29,51 @@ class Pipeline(Protocol):
     def predict(self, track: np.ndarray, nodes: np.ndarray, arcs: np.ndarray) -> Prediction: ...
 
 
+class TrainedPipeline:
+    """Real pipeline: shared candidate generator -> trained classifier -> HMM/Viterbi.
+
+    Uses pathsnap.candidates.build_candidates (never sees the route) and the exact feature list the
+    model was trained on. Refuses to load a model whose saved feature list differs from
+    FEATURE_COLUMNS, so a stale artifact can never silently produce wrong predictions.
+    """
+
+    def __init__(self, model_path, config_path, params: HMMParams | None = None):
+        import json
+
+        import joblib
+
+        from pathsnap.candidates import FEATURE_COLUMNS
+
+        cfg = json.loads(open(config_path).read())
+        saved = cfg.get("feature_columns") or cfg.get("features")
+        if saved != list(FEATURE_COLUMNS):
+            raise RuntimeError(
+                f"Model/config feature list {saved} does not match pathsnap.candidates.FEATURE_COLUMNS "
+                f"{list(FEATURE_COLUMNS)}. Retrain the model with the shared generator.")
+        self.model = joblib.load(model_path)
+        self.params = params or HMMParams()
+        self.features = list(FEATURE_COLUMNS)
+
+    def predict(self, track, nodes, arcs) -> Prediction:
+        from pathsnap.candidates import build_candidates
+        from pathsnap.data import Trip
+
+        tf = make_projector(track[:, :2])
+        trip = Trip("request", track, nodes, arcs, None, project(tf, track[:, :2]), project(tf, nodes[:, :2]))
+        n = len(track)
+        df = build_candidates(trip)                       # no route is available here
+        if df.empty:
+            empty = pd.Series(-1, index=np.arange(n), dtype=int)
+            return Prediction(empty, empty.copy())
+
+        probs = self.model.predict_proba(df[self.features].to_numpy(dtype=np.float32))[:, 1]
+        top = df.assign(p=probs).sort_values("p").groupby("point_idx").tail(1).set_index("point_idx")["arc_id"]
+        top1 = top.reindex(range(n), fill_value=-1).astype(int)
+        hmm = decode(df[["point_idx", "arc_id"]], probs, RoadGraph(arcs),
+                     times=track[:, 2], params=self.params, n_points=n)
+        return Prediction(hmm, top1)
+
+
 class PlaceholderPipeline:
     """DEV ONLY. Distance-based score instead of a trained model."""
 

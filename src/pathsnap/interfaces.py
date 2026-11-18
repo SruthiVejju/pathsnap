@@ -34,13 +34,14 @@ def decode(candidates: pd.DataFrame, probs: np.ndarray, graph) -> pd.Series:
     raise NotImplementedError
 
 
-# API response contract (FastAPI -> UI)
-# POST /predict {"trip_id": "00000000"} ->
+# API response contract (FastAPI -> UI). Coordinates are [lat, lon] (Leaflet order).
+# POST /predict/{trip_id}  (a JSON-body form POST /predict {"trip_id": ...} also exists) ->
 # {
 #   "trip_id": str,
-#   "gps": [[lon, lat], ...],
-#   "predicted_route": [[lon, lat], ...],      # polyline of predicted arcs
-#   "reference_route": [[lon, lat], ...],      # server-side truth, for display after scoring
-#   "metrics": {"pointwise_acc": float, "classifier_only_acc": float, "route_continuity": float},
+#   "raw_gps": [[lat, lon], ...],
+#   "predicted_route": [[lat, lon], ...],
+#   "summary": {"observations": int, "matched_segments": int, "processing_ms": float},
+#   "metrics": {"route_continuity": ..., "route_continuity_classifier_only": ..., ...},  # numbers only
 #   "latency_ms": float
 # }
+# The reference route / labels are NEVER returned: ground truth must not reach the UI.
