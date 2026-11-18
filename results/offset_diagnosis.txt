@@ -1,0 +1,24 @@
+== trip 00000033 (train): points=5844 arcs=6360 route_arcs=169
+   A. dist to nearest route arc: median=122.4 p90=139.7 max=160.5 m
+   B. miss: radius 60 m only=52.4%, top-15 only=65.5%, both=66.6%; 14 contiguous runs, longest=3036
+   C. sampled 418 pts, 53% beyond 60 m of the route
+      distance to nearest ANY arc (those points): median=6.2 m
+      offset point->route: mean=(6,131) m (east,north), |mean|=131 m, std=(12,23) m
+      median dist to route: before shift removal=135.3 m, after=6.8 m
+
+== trip 00000054 (train): points=19313 arcs=116916 route_arcs=422
+   A. dist to nearest route arc: median=138.6 p90=196.8 max=241.3 m
+   B. miss: radius 60 m only=86.0%, top-15 only=39.5%, both=88.3%; 42 contiguous runs, longest=9098
+   C. sampled 403 pts, 86% beyond 60 m of the route
+      distance to nearest ANY arc (those points): median=87.6 m
+      offset point->route: mean=(14,-139) m (east,north), |mean|=140 m, std=(61,22) m
+      median dist to route: before shift removal=149.4 m, after=23.3 m
+
+== trip 00000002 (train): points=7243 arcs=16139 route_arcs=262
+   A. dist to nearest route arc: median=5.7 p90=97.8 max=569.7 m
+   B. miss: radius 60 m only=11.7%, top-15 only=8.5%, both=11.7%; 7 contiguous runs, longest=541
+   C. sampled 403 pts, 12% beyond 60 m of the route
+      distance to nearest ANY arc (those points): median=57.2 m
+      offset point->route: mean=(-75,199) m (east,north), |mean|=212 m, std=(65,173) m
+      median dist to route: before shift removal=207.6 m, after=64.6 m
+

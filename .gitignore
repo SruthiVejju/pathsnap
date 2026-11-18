@@ -137,6 +137,14 @@ temp/
 
 # Temporary downloaded archives
 *.zip
+# Local generated datasets and plots
+results/
+/data/
+*.csv.gz
+*.html
+
+# Ruff stuff:
+.ruff_cache/
 
 # ==================================================
 # IDE AND EDITOR FILES

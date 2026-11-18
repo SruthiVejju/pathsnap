@@ -33,6 +33,36 @@ export PATHSNAP_DATA="/path/to/Student folder"   # contains train/ and student_t
 - Seed 42 everywhere; CV is GroupKFold by trip.
 - Ground-truth labels stay server-side in the API.
 
+## Data and feature pipeline (Part A)
+
+`src/pathsnap/candidates.py` generates up to 25 road-arc candidates within 60 m
+for every GPS point, without reading the reference route. Its `FEATURE_COLUMNS`
+list is the canonical ordered list of 11 model features. `add_labels` is
+separate and uses the ordered reference route only to generate monotonic
+training labels. Heading and speed features do not bridge GPS gaps over five
+seconds.
+
+From the repository root in PowerShell, with the dataset in the sibling
+`Student folder` directory:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\eda.py '..\Student folder' results\eda
+.\.venv\Scripts\python.exe scripts\build_dataset.py '..\Student folder\train' results\train.csv.gz
+.\.venv\Scripts\python.exe scripts\build_dataset.py '..\Student folder\student_test' results\student_test.csv.gz
+```
+
+The candidate table has `trip_id`, `point_idx`, `arc_id`, the 11 columns in
+`FEATURE_COLUMNS`, and `label`. The `*_miss.csv` file records per-trip candidate
+miss rates and aligned-route distances. Evaluator-testing data and labels must
+not be used during development.
+
+To create a sensitivity table excluding flagged training trips, while keeping
+their audit metrics and reasons:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\build_dataset.py '..\Student folder\train' results\train_exclude_33_54.csv.gz --exclude-trip 00000033 --exclude-trip 00000054
+```
+
 ## Running the API server (Laptop 1)
 
 The API hosts the pipeline (candidates -> classifier -> HMM/Viterbi) and scores predictions
