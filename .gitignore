@@ -208,6 +208,12 @@ cython_debug/
 # Temporary file for partial code execution
 tempCodeRunnerFile.py
 
+# Local generated datasets and plots
+results/
+data/
+*.csv.gz
+*.html
+
 # Ruff stuff:
 .ruff_cache/
 
