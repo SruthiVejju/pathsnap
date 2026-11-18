@@ -8,6 +8,7 @@ decoder. Replace it with the team's trained pipeline (candidate generation -> fe
 trained classifier -> decode) by implementing the same `predict` signature.
 """
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Protocol
 
 import numpy as np
@@ -30,11 +31,12 @@ class Pipeline(Protocol):
 
 
 class TrainedPipeline:
-    """Real pipeline: shared candidate generator -> trained classifier -> HMM/Viterbi.
+    """Real pipeline: shared candidate generator -> (context features) -> trained classifier -> HMM/Viterbi.
 
-    Uses pathsnap.candidates.build_candidates (never sees the route) and the exact feature list the
-    model was trained on. Refuses to load a model whose saved feature list differs from
-    FEATURE_COLUMNS, so a stale artifact can never silently produce wrong predictions.
+    Uses pathsnap.candidates.build_candidates (never sees the route). The model's saved feature list decides
+    which features are built: the base FEATURE_COLUMNS, or EXTENDED_COLUMNS (base + neighbour-point context
+    from pathsnap.context). A saved list that matches neither is refused, so a stale artifact can never
+    silently produce wrong predictions.
     """
 
     def __init__(self, model_path, config_path, params: HMMParams | None = None):
@@ -43,19 +45,26 @@ class TrainedPipeline:
         import joblib
 
         from pathsnap.candidates import FEATURE_COLUMNS
+        from pathsnap.context import EXTENDED_COLUMNS
 
         cfg = json.loads(open(config_path).read())
         saved = cfg.get("feature_columns") or cfg.get("features")
-        if saved != list(FEATURE_COLUMNS):
+        if saved not in (list(FEATURE_COLUMNS), list(EXTENDED_COLUMNS)):
             raise RuntimeError(
-                f"Model/config feature list {saved} does not match pathsnap.candidates.FEATURE_COLUMNS "
-                f"{list(FEATURE_COLUMNS)}. Retrain the model with the shared generator.")
+                f"Model/config feature list {saved} matches neither pathsnap.candidates.FEATURE_COLUMNS "
+                f"{list(FEATURE_COLUMNS)} nor pathsnap.context.EXTENDED_COLUMNS. Retrain the model with the shared code.")
+        self.use_context = saved == list(EXTENDED_COLUMNS)
         self.model = joblib.load(model_path)
-        self.params = params or HMMParams()
-        self.features = list(FEATURE_COLUMNS)
+        if params is None:
+            # tuned decoder settings (scripts/tune_decoder.py --write-artifact), if present next to the model config
+            hmm_cfg = Path(config_path).with_name("hmm_config.json")
+            params = HMMParams(**json.loads(hmm_cfg.read_text())["params"]) if hmm_cfg.exists() else HMMParams()
+        self.params = params
+        self.features = list(saved)
 
     def predict(self, track, nodes, arcs) -> Prediction:
         from pathsnap.candidates import build_candidates
+        from pathsnap.context import add_context
         from pathsnap.data import Trip
 
         tf = make_projector(track[:, :2])
@@ -65,6 +74,8 @@ class TrainedPipeline:
         if df.empty:
             empty = pd.Series(-1, index=np.arange(n), dtype=int)
             return Prediction(empty, empty.copy())
+        if self.use_context:
+            df = add_context(df, trip)
 
         probs = self.model.predict_proba(df[self.features].to_numpy(dtype=np.float32))[:, 1]
         top = df.assign(p=probs).sort_values("p").groupby("point_idx").tail(1).set_index("point_idx")["arc_id"]

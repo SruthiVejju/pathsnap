@@ -261,3 +261,7 @@ results/candidates_*.csv
 secrets*
 
 logs/
+
+# The UI client lives in ui/src/lib/ (the generic Python "lib/" rule above would otherwise hide it)
+!ui/src/lib/
+/work/

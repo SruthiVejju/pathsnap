@@ -1,0 +1,13 @@
+{
+  "params": {
+    "emission_weight": 1.0,
+    "hop_penalty": 2.5652022288002807,
+    "unreachable_penalty": 1469.4501593400244,
+    "max_hops": 9,
+    "gap_s": 43.70222016754327,
+    "uturn_penalty": 117.96679021276287
+  },
+  "tuned_on": "train (out-of-fold, context-feature model)",
+  "trials": 60,
+  "seed": 42
+}

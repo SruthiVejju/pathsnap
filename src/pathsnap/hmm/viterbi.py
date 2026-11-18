@@ -35,17 +35,22 @@ class HMMParams:
     unreachable_penalty: float = 8.0
     max_hops: int = 6
     gap_s: float = 30.0
+    uturn_penalty: float | None = None   # None = old behaviour (a turnaround is an ordinary 1-hop move)
 
 
 def _cost_matrix(graph: RoadGraph, prev_arcs: np.ndarray, cur_arcs: np.ndarray, p: HMMParams) -> np.ndarray:
     """cost[i, j] of moving from prev_arcs[i] to cur_arcs[j]."""
     cost = np.full((len(prev_arcs), len(cur_arcs)), p.unreachable_penalty, dtype=float)
+    no_uturn = p.uturn_penalty is not None
     for i, a in enumerate(prev_arcs):
-        reach = graph.reachable(int(a), p.max_hops)
+        reach = graph.reachable(int(a), p.max_hops, no_uturn=no_uturn)
+        rev = int(graph.reverse[int(a)])
         for j, b in enumerate(cur_arcs):
             h = reach.get(int(b))
             if h is not None and h <= p.max_hops:   # cache may hold deeper BFS from an earlier call
                 cost[i, j] = p.hop_penalty * h
+            if no_uturn and int(b) == rev and h != 0:
+                cost[i, j] = p.uturn_penalty        # turning around onto the opposite-direction twin
     return cost
 
 

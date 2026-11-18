@@ -56,3 +56,25 @@ def test_time_gap_cuts_chain():
     cands, probs = make_cands([(0, 0, 0.9), (1, 12, 0.9)])
     pred = decode(cands, probs, g, times=np.array([0.0, 1000.0]), params=HMMParams(gap_s=30))
     assert list(pred) == [0, 12]
+
+
+def two_way_graph():
+    """One two-way road: arcs 0:(0->1) 1:(1->2) forward, arcs 2:(1->0) 3:(2->1) reverse twins."""
+    return RoadGraph(np.array([[0, 1], [1, 2], [1, 0], [2, 1]]))
+
+
+def test_reverse_arc_is_detected():
+    g = two_way_graph()
+    assert list(g.reverse) == [2, 3, 0, 1]
+    assert 2 in g.reachable(0, 2)                               # a free turnaround is reachable by default ...
+    assert 2 not in g.reachable(0, 2, no_uturn=True)            # ... but not when U-turns are excluded
+
+
+def test_uturn_penalty_keeps_direction():
+    g = two_way_graph()
+    # Vehicle drives forward 0 -> 1. At point 1 the classifier slightly prefers the REVERSE twin of arc 0 (arc 2).
+    cands, probs = make_cands([(0, 0, 0.9), (1, 1, 0.45), (1, 2, 0.55), (2, 1, 0.9)])
+    free = decode(cands, probs, g, params=HMMParams(hop_penalty=0.1))          # old behaviour: turnaround is cheap
+    assert list(free) == [0, 2, 1]
+    kept = decode(cands, probs, g, params=HMMParams(hop_penalty=0.1, uturn_penalty=20.0))
+    assert list(kept) == [0, 1, 1]

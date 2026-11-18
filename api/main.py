@@ -9,6 +9,7 @@ It is never given to the pipeline.
 import logging
 import os
 import time
+from dataclasses import asdict
 from pathlib import Path
 
 import numpy as np
@@ -90,7 +91,9 @@ def _polyline(nodes: np.ndarray, arcs: np.ndarray, arc_ids) -> list[list[float]]
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "eval_dir": str(EVAL_DIR), "pipeline": type(PIPELINE).__name__}
+    params = getattr(PIPELINE, "params", None)
+    return {"status": "ok", "eval_dir": str(EVAL_DIR), "pipeline": type(PIPELINE).__name__,
+            "hmm_params": asdict(params) if params is not None else None}
 
 
 @app.get("/trips")
