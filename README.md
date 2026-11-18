@@ -180,4 +180,12 @@ The model in `artifacts/` was retrained by re-running the team's unmodified `tra
 (`results/comparison.csv`); the decoder settings in `artifacts/hmm_config.json` come from `results/decoder_tuning/`.
 
 ## Team / AI disclosure
-_Fill in team members and their areas; disclose AI assistance as per event policy._
+
+| Team member | Area of contribution |
+|---|---|
+| **Sruthi Vejju** | Model training and comparison, trip-grouped cross-validation, Optuna hyperparameter tuning, and evaluation before and after HMM decoding |
+| **Shwetha S** | Data exploration, GPS preprocessing, road candidate generation, feature engineering, and reference-label alignment |
+| **Subramani B M** | FastAPI backend, HMM/Viterbi decoder, and integration of the trained model |
+| **Shubham Singh** | Evaluator UI, Folium maps, and project visualisations |
+
+**AI assistance**- We used ChatGPT and Claude for general project support.
