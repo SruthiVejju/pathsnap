@@ -52,3 +52,19 @@ def test_trained_pipeline_rejects_stale_feature_list(tmp_path):
     (tmp_path / "c.json").write_text(json.dumps({"features": ["distance_m", "rank"]}))
     with pytest.raises(RuntimeError, match="FEATURE_COLUMNS"):
         TrainedPipeline(tmp_path / "m.joblib", tmp_path / "c.json")
+
+
+def test_trained_pipeline_loads_tuned_hmm_params(tmp_path):
+    import json
+
+    import joblib
+
+    from pathsnap.candidates import FEATURE_COLUMNS
+    from pathsnap.pipeline import TrainedPipeline
+
+    joblib.dump({"dummy": 1}, tmp_path / "m.joblib")
+    (tmp_path / "c.json").write_text(json.dumps({"feature_columns": list(FEATURE_COLUMNS)}))
+    assert TrainedPipeline(tmp_path / "m.joblib", tmp_path / "c.json").params.hop_penalty == 1.0   # defaults
+    (tmp_path / "hmm_config.json").write_text(json.dumps({"params": {"hop_penalty": 0.5, "max_hops": 9}}))
+    p = TrainedPipeline(tmp_path / "m.joblib", tmp_path / "c.json").params
+    assert p.hop_penalty == 0.5 and p.max_hops == 9

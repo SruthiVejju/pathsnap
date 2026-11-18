@@ -1,0 +1,79 @@
+{
+  "seed": 42,
+  "trials": 60,
+  "folds": 5,
+  "max_points": 1500,
+  "excluded_trips": [],
+  "objective": "mean over trips of HMM pointwise accuracy on covered points (training trips, out-of-fold classifier probabilities)",
+  "search_space": {
+    "emission_weight": "fixed 1.0 (redundant with the penalties)",
+    "hop_penalty": "log 0.1-100",
+    "unreachable_penalty": "log 1-3000",
+    "max_hops": "int 2-12",
+    "gap_s": "log 5-300"
+  },
+  "default_params": {
+    "emission_weight": 1.0,
+    "hop_penalty": 1.0,
+    "unreachable_penalty": 8.0,
+    "max_hops": 6,
+    "gap_s": 30.0
+  },
+  "best_params": {
+    "emission_weight": 1.0,
+    "hop_penalty": 14.064436584526058,
+    "unreachable_penalty": 829.4518038591715,
+    "max_hops": 6,
+    "gap_s": 123.17939834888675
+  },
+  "summary": {
+    "train_oof": {
+      "classifier_only": {
+        "acc_covered": 0.8511895671185485,
+        "acc_all": 0.8424959676561145,
+        "continuity": 0.7260732086373037,
+        "coverage": 0.9855075481062243,
+        "n_trips": 80
+      },
+      "hmm_default": {
+        "acc_covered": 0.9063486409731926,
+        "acc_all": 0.8966238604173965,
+        "continuity": 0.8948281554091271,
+        "coverage": 0.9855075481062243,
+        "n_trips": 80
+      },
+      "hmm_tuned": {
+        "acc_covered": 0.9511339752729032,
+        "acc_all": 0.9396200167260303,
+        "continuity": 0.9135843425674197,
+        "coverage": 0.9855075481062243,
+        "n_trips": 80
+      }
+    },
+    "student_test": {
+      "classifier_only": {
+        "acc_covered": 0.8720100581510233,
+        "acc_all": 0.8720100581510233,
+        "continuity": 0.7897113421844123,
+        "coverage": 1.0,
+        "n_trips": 10
+      },
+      "hmm_default": {
+        "acc_covered": 0.9160135426028948,
+        "acc_all": 0.9160135426028948,
+        "continuity": 0.9092287252150839,
+        "coverage": 1.0,
+        "n_trips": 10
+      },
+      "hmm_tuned": {
+        "acc_covered": 0.9546554138369908,
+        "acc_all": 0.9546554138369908,
+        "continuity": 0.9208484263525758,
+        "coverage": 1.0,
+        "n_trips": 10
+      }
+    }
+  },
+  "model": "candidate_model.joblib",
+  "seconds": 256.6
+}
