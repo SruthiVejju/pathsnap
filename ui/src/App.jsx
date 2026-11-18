@@ -8,8 +8,9 @@ function Stat({ icon: Icon, label, value, suffix = '' }) {
 }
 
 export default function App() {
-  const [trips, setTrips] = useState([]);
+  const [tripGroups, setTripGroups] = useState({ student_test: [], evaluator_test: [] });
   const [selectedTrip, setSelectedTrip] = useState('');
+  const [selectedGroup, setSelectedGroup] = useState('');
   const [result, setResult] = useState(null);
   const [serverStatus, setServerStatus] = useState('checking');
   const [loading, setLoading] = useState(false);
@@ -18,10 +19,14 @@ export default function App() {
   async function loadTrips() {
     setError('');
     try {
-      const [health, availableTrips] = await Promise.all([getHealth(), getTrips()]);
+      const [health, availableGroups] = await Promise.all([getHealth(), getTrips()]);
       setServerStatus(health.status === 'ok' ? 'online' : 'offline');
-      setTrips(availableTrips);
-      setSelectedTrip((current) => current || availableTrips[0] || '');
+      setTripGroups(availableGroups);
+      const currentGroup = Object.entries(availableGroups).find(([, groupTrips]) => groupTrips.includes(selectedTrip));
+      const firstGroup = Object.keys(availableGroups).find((group) => availableGroups[group].length);
+      const nextGroup = currentGroup?.[0] || firstGroup || '';
+      setSelectedGroup(nextGroup);
+      setSelectedTrip(currentGroup ? selectedTrip : firstGroup ? availableGroups[firstGroup][0] : '');
     } catch (err) {
       setServerStatus('offline');
       setError(err.response?.data?.detail || err.message || 'Could not connect to the PathSnap API.');
@@ -45,8 +50,10 @@ export default function App() {
   }
 
   const summary = result?.summary || {};
+  const metrics = result?.metrics || {};
   const hasMap = Boolean(result?.raw_gps?.length || result?.predicted_route?.length);
   const observations = useMemo(() => summary.observations ?? result?.raw_gps?.length, [summary, result]);
+  const percent = (value) => typeof value === 'number' && Number.isFinite(value) ? (value * 100).toFixed(1) : null;
 
   return (
     <div className="app-shell">
@@ -62,7 +69,7 @@ export default function App() {
 
         <section className="page-heading"><div><div className="eyebrow">DISTRIBUTED ROUTE RECONSTRUCTION</div><h1>Evaluator dashboard</h1><p>Inspect noisy GPS observations and the route reconstructed by PathSnap.</p></div><div className="heading-chip"><Activity size={16}/> Prediction workspace</div></section>
 
-        <section className="control-panel"><div className="control-copy"><div className="control-icon"><Compass size={20}/></div><div><h2>Select a trip</h2><p>Choose a permitted evaluation trip to run map matching.</p></div></div><div className="control-actions"><select value={selectedTrip} onChange={(e) => setSelectedTrip(e.target.value)} disabled={!trips.length}><option value="">Select trip</option>{trips.map((trip) => <option key={trip} value={trip}>Trip {trip}</option>)}</select><button className="primary-button" onClick={runPrediction} disabled={!selectedTrip || loading || serverStatus !== 'online'}>{loading ? <RefreshCw className="spin" size={16}/> : <Route size={16}/>} {loading ? 'Reconstructing…' : 'Run reconstruction'} <ArrowUpRight size={15}/></button></div></section>
+        <section className="control-panel"><div className="control-copy"><div className="control-icon"><Compass size={20}/></div><div><h2>Select a trip</h2><p>Choose a permitted evaluation trip to run map matching.</p></div></div><div className="control-actions trip-selectors">{['student_test', 'evaluator_test'].map((group) => <select key={group} aria-label={`${group.replace('_', ' ')} trip`} value={selectedGroup === group ? selectedTrip : ''} onChange={(e) => { setSelectedGroup(group); setSelectedTrip(e.target.value); }} disabled={!tripGroups[group]?.length}><option value="">{group === 'student_test' ? 'Student test trip' : 'Evaluator test trip'}</option>{(tripGroups[group] || []).map((trip) => <option key={trip} value={trip}>Trip {trip}</option>)}</select>)}<button className="primary-button" onClick={runPrediction} disabled={!selectedTrip || loading || serverStatus !== 'online'}>{loading ? <RefreshCw className="spin" size={16}/> : <Route size={16}/>} {loading ? 'Reconstructing…' : 'Run reconstruction'} <ArrowUpRight size={15}/></button></div></section>
 
         {error && <div className="error-banner"><WifiOff size={17}/><div><b>Unable to complete request</b><span>{error}</span></div></div>}
 
@@ -71,6 +78,15 @@ export default function App() {
           <Stat icon={Activity} label="GPS observations" value={observations}/>
           <Stat icon={Route} label="Matched segments" value={summary.matched_segments}/>
           <Stat icon={Clock3} label="Processing time" value={summary.processing_ms} suffix=" ms"/>
+        </section>
+
+        <section className="metrics-section">
+          <div className="section-heading"><div><h2>Route quality</h2><p>Evaluation metrics calculated by the server for this trip.</p></div></div>
+          <div className="metrics-grid">
+            <Stat icon={Activity} label="Accuracy" value={percent(metrics.pointwise_accuracy)} suffix="%"/>
+            <Stat icon={Route} label="Route continuity" value={percent(metrics.route_continuity)} suffix="%"/>
+            <Stat icon={Gauge} label="Route F1" value={percent(metrics.route_f1)} suffix="%"/>
+          </div>
         </section>
 
         <section className="map-section"><div className="section-heading"><div><h2>Trajectory visualization</h2><p>Raw GPS points compared with the reconstructed path.</p></div><div className="map-tag"><span/> INTERACTIVE MAP</div></div><div className="map-card">{hasMap ? <RouteMap result={result}/> : <div className="empty-map"><div className="empty-map-icon"><MapPinned size={30}/></div><h3>Map preview will appear here</h3><p>Connect to the PathSnap server and run a trip reconstruction to visualize its GPS observations and predicted route.</p><div className="empty-hint"><Server size={14}/> Waiting for prediction data</div></div>}</div></section>

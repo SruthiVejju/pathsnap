@@ -27,7 +27,7 @@ export default function RouteMap({ result }) {
         {roadNetwork.map((segment, i) => <Polyline key={`road-${i}`} positions={segment} pathOptions={{ color: '#64748b', weight: 3, opacity: 0.38 }} />)}
         {rawGps.length > 1 && <Polyline positions={rawGps} pathOptions={{ color: '#e5a23b', weight: 2, dashArray: '5 7', opacity: 0.8 }} />}
         {rawGps.map((point, i) => <CircleMarker key={`gps-${i}`} center={point} radius={3} pathOptions={{ color: '#e5a23b', fillColor: '#f4bd61', fillOpacity: 0.8, weight: 1 }} />)}
-        {predicted.length > 1 && <Polyline positions={predicted} pathOptions={{ color: '#2dd4bf', weight: 5, opacity: 0.95 }} />}
+        {predicted.length > 1 && <Polyline positions={predicted} pathOptions={{ color: '#ef4444', weight: 5, opacity: 0.95 }} />}
         <FitBounds rawGps={rawGps} predictedRoute={predicted} />
       </MapContainer>
       <div className="map-legend">
