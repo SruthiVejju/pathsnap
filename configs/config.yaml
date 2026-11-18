@@ -1,0 +1,17 @@
+# Shared conventions: everyone uses these values.
+seed: 42
+# Projection is chosen PER TRIP (trips span the whole world): see pathsnap/data/geo.py
+crs_geographic: "EPSG:4326"
+
+# Raw data root; override with env var PATHSNAP_DATA
+data_root: "../Student folder"
+train_dir: "train"
+student_test_dir: "student_test"
+# NOTE: evaluator trips are NEVER referenced in development code.
+
+candidates:
+  radius_m: 50        # placeholder; to be tuned on training data only
+  max_k: 20
+
+cv:
+  n_splits: 5         # GroupKFold, groups = trip_id

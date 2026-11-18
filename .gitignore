@@ -227,3 +227,34 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ---- PathSnap project ----
+# environment
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.DS_Store
+.env
+
+# raw data (never commit; organisers provide it)
+/data/
+/Student folder/
+/student_test/
+/train/
+*.track
+*.nodes
+*.arcs
+*.route
+
+# large derived tables (regenerate with scripts/)
+results/*.parquet
+results/candidates_*.csv
+*.npy
+*.npz
+
+# secrets
+*.key
+secrets*
+
+logs/
