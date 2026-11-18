@@ -12,7 +12,8 @@ const api = axios.create({
 //   trip_id, raw_gps: [[lat, lon], ...],
 //   predicted_route: [[lat, lon], ...],
 //   road_network: [[[lat, lon], [lat, lon]], ...] (optional),
-//   summary: {observations, matched_segments, processing_ms} (optional)
+//   summary: {observations, matched_segments, processing_ms} (optional),
+//   metrics: {pointwise_accuracy, route_continuity, route_f1} (optional)
 // }
 // Reference labels/routes must not be returned by evaluator endpoints.
 export async function getHealth() {
